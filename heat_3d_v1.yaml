@@ -1,0 +1,81 @@
+heat_template_version: 2016-04-08
+ 
+description: Template that installs a wordpress server and supporting MySQL database running on separate servers
+ 
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for server. Please use an Ubuntu based image.
+    default: u1604
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used on the compute instance.
+    default: m1.small
+  mysql_name:
+    type: string
+    label: name
+    description: Name of instance.
+    default: mysql
+  wordpress_name:
+    type: string
+    label: name
+    description: Name of instance.
+    default: wordpress
+
+
+  public_network:
+    type: string
+    label: Public network name or ID
+    description: Public network to attach instance to.
+    default: external
+  private_network:
+    type: string
+    label: Private network name or ID
+    description: Network to attach instance to.
+    default: private2
+  security_group:
+    type: string
+    label: default secutiry group
+    description: security group for VM
+    default: default
+ 
+resources:
+#  network:
+#    type: Lib::MSG::PrivateNetwork
+#    properties:
+#      public_network: { get_param: public_network }
+
+  mysql:
+    type: Lib::MSG::MySQL
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      name: { get_param: mysql_name }
+      private_network: { get_param: private_network }
+      database_name: wordpress
+      database_user: wordpress_user
+ 
+  wordpress:
+    type: Lib::MSG::Wordpress
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      name: { get_param: wordpress_name }
+      private_network: { get_param: private_network }
+      mysql_server: { get_attr: [mysql, ip] }
+      database_name: wordpress
+      database_user: wordpress_user
+      database_password: { get_attr: [mysql, database_password] }
+
+  floating_ip:
+    type: Lib::MSG::FloatingIP
+    properties:
+      port: { get_attr: [wordpress, port] }
+      public_network: { get_param: public_network }
+
+outputs:
+  ip:
+    description: The public IP address to access Wordpress.
+    value: { get_attr: [floating_ip, ip] }
